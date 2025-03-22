@@ -3,7 +3,7 @@
 ############################################################
 ## CSO1 Spring 2023 - Homework 5 
 ## 
-## Computing ID: YOURID
+## Computing ID: ays4be
 ## 
 ## You must update your ID above to receive credit.  Note
 ## that this is an individual assignment and you may NOT
@@ -19,8 +19,27 @@ modulo:
 
 	# TO DO: write this function
 	
-	xorq	%rax, %rax
-	retq
+	# long modulo(long x, long y)
+# returns x % y, using repeated subtraction until x < 0, then add y back once.
+# If y == 0, return 0
+
+        cmpq $0, %rsi         # check if y == 0
+        jne  .Lmod_not_zero
+        movq $0, %rax         # if y == 0, result = 0
+        retq
+
+.Lmod_not_zero:
+        movq %rdi, %rax       # put x into %rax
+.Lmod_loop:
+        cmpq $0, %rax         # if x < 0 => done
+        jl   .Lmod_done
+        subq %rsi, %rax       # x -= y
+        jmp  .Lmod_loop
+
+.Lmod_done:
+        addq %rsi, %rax       # undo last subtraction
+        retq
+
 
 ############################################################
 ##                 end of modulo routine                  ##
@@ -35,10 +54,38 @@ modulo:
 	.globl	gcd
 gcd:
 
-	# TO DO: write this function
+# long gcd(long x, long y)
+# if (x == y) return y
+# else if (y == 0) return x
+# else return gcd(y, modulo(x,y))
 
-	xorq	%rax, %rax
-	retq
+        cmpq %rsi, %rdi
+        je .Lgcd_return_y
+
+        cmpq $0, %rsi
+        je .Lgcd_return_x
+
+        # call modulo(x, y)
+        pushq %rdi    # save x
+        pushq %rsi    # save y
+        call modulo
+        popq %rsi     # restore y
+        popq %rdi     # restore x
+
+        # gcd(y, result_of_modulo)
+        movq %rsi, %rdi   # first arg = y
+        movq %rax, %rsi   # second arg = x % y
+        call gcd
+        retq
+
+.Lgcd_return_y:
+        movq %rsi, %rax
+        retq
+
+.Lgcd_return_x:
+        movq %rdi, %rax
+        retq
+
 
 ############################################################
 ##                 end of gcd routine                     ##
@@ -51,12 +98,51 @@ gcd:
 ############################################################
 
 	.globl	prime
+# long prime(long x)
+# returns 1 if x is prime, 0 otherwise
+# for (i=1; i<x; i++)
+#     if (gcd(x,i) != 1) return 0
+# return 1
+
 prime:
+        pushq %rbp
+        movq  %rsp, %rbp
 
-	# TO DO: write this function
+        # We'll store x in %r12, i in %rbx
+        pushq %rbx
+        pushq %r12
 
-	xorq	%rax, %rax
-	retq
+        movq %rdi, %r12    # x in %r12
+        movq $1, %rbx      # i = 1
+
+.Lprime_loop:
+        cmpq %r12, %rbx    # if i >= x => done => prime
+        jge  .Lprime_done
+
+        # gcd(x,i)
+        movq %r12, %rdi
+        movq %rbx, %rsi
+        call gcd
+
+        cmpq $1, %rax      # if gcd != 1 => not prime => return 0
+        jne  .Lprime_return0
+
+        incq %rbx
+        jmp  .Lprime_loop
+
+.Lprime_return0:
+        movq $0, %rax
+        jmp  .Lprime_exit
+
+.Lprime_done:
+        movq $1, %rax
+
+.Lprime_exit:
+        popq %r12
+        popq %rbx
+        leave
+        retq
+
 
 ############################################################
 ##                end of prime routine                    ##
